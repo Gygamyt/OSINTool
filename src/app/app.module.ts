@@ -5,9 +5,15 @@ import { PipelinesModule } from "../pipelines/pipelines.module";
 import { AgentsModule } from "../agents/agents.module";
 import { AiModule } from "../ai";
 import { BullModule } from "@nestjs/bullmq";
+import { MongooseModule } from "@nestjs/mongoose";
 
 @Module({
   imports: [
+    MongooseModule.forRootAsync({
+      useFactory: () => ({
+        uri: `mongodb://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@mongo:27017/${process.env.MONGO_DATABASE}?authSource=admin`,
+      }),
+    }),
     BullModule.forRoot({
       connection: {
         host: "redis",

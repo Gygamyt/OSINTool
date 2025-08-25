@@ -10,6 +10,12 @@ import {
   ReportFinalizerAgent,
   RequestParsingAgent,
 } from "../agents/impl";
+import { InjectModel } from "@nestjs/mongoose";
+import {
+  PipelineRun,
+  PipelineRunDocument,
+} from "./schemas/pipeline-run.schema";
+import { Model } from "mongoose";
 
 @Processor("pipelines")
 export class PipelinesProcessor extends WorkerHost {
@@ -22,29 +28,25 @@ export class PipelinesProcessor extends WorkerHost {
     private readonly attractivenessProfilerAgent: AttractivenessProfilerAgent,
     private readonly interviewTutorAgent: InterviewTutorAgent,
     private readonly reportFinalizerAgent: ReportFinalizerAgent,
+    @InjectModel(PipelineRun.name)
+    private pipelineRunModel: Model<PipelineRunDocument>,
   ) {
     super();
   }
+
   async process(job: Job<CreatePipelineDto>): Promise<any> {
     this.logger.log(`Processing job ${job.id} with name ${job.name}...`);
 
-    switch (job.name) {
-      case "run-pipeline":
-        return this.handleRunPipeline(job);
-      default:
-        throw new Error(`Unknown job name: ${job.name}`);
-    }
-  }
-
-  private async handleRunPipeline(job: Job<CreatePipelineDto>) {
-    const createPipelineDto = job.data;
-    this.logger.log(
-      `Executing pipeline for company: "${createPipelineDto.companyName}"...`,
-    );
+    const pipelineRun = await this.pipelineRunModel.create({
+      jobId: job.id,
+      status: "processing",
+      companyName: job.data.companyName,
+      businessDomain: job.data.businessDomain,
+    });
 
     try {
-      const initialText = createPipelineDto.companyName;
-      const { businessDomain } = createPipelineDto;
+      const initialText = job.data.companyName;
+      const businessDomain = job.data.businessDomain;
 
       const identificationResult =
         await this.companyIdentificationAgent.execute({
@@ -87,10 +89,27 @@ export class PipelinesProcessor extends WorkerHost {
         },
       });
 
-      this.logger.log(`Job ${job.id} completed successfully.`);
+      pipelineRun.status = "completed";
+      pipelineRun.finalReport = finalReport.output;
+      pipelineRun.intermediateSteps = {
+        identification: identificationResult.output,
+        parsing: parsingResult.output,
+        osint: osintResult.output,
+        profiling: profilerResult.output,
+        tutoring: tutorResult.output,
+      };
+
+      await pipelineRun.save();
+
+      this.logger.log(`Job ${job.id} completed successfully and saved to DB.`);
+
       return finalReport.output;
     } catch (error) {
       this.logger.error(`Job ${job.id} failed: ${error.message}`, error.stack);
+      pipelineRun.status = "failed";
+      pipelineRun.errorMessage = error.message;
+      await pipelineRun.save();
+
       throw error;
     }
   }
