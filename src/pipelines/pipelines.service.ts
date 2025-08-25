@@ -3,6 +3,9 @@ import { InjectQueue } from "@nestjs/bullmq";
 import { Queue, QueueEvents } from "bullmq";
 import { CreatePipelineDto } from "./dto/create-pipeline.dto";
 import * as crypto from "crypto";
+import { InjectModel } from "@nestjs/mongoose";
+import { PipelineRun, PipelineRunDocument } from "./schemas/pipeline-run.schema";
+import { Model } from "mongoose";
 
 @Injectable()
 export class PipelinesService implements OnModuleDestroy {
@@ -11,6 +14,7 @@ export class PipelinesService implements OnModuleDestroy {
 
   constructor(
     @InjectQueue("pipelines") private readonly pipelinesQueue: Queue,
+    @InjectModel(PipelineRun.name) private pipelineRunModel: Model<PipelineRunDocument>,
   ) {
     this.queueEvents = new QueueEvents("pipelines", {
       connection: {
@@ -104,6 +108,20 @@ export class PipelinesService implements OnModuleDestroy {
       progress: job.progress, // (мы пока не используем, но можно)
       result,
       failedReason,
+    };
+  }
+
+  async getPipelineResult(jobId: string) {
+    this.logger.log(`Fetching result from MongoDB for job ID: ${jobId}`);
+
+    const pipelineRun = await this.pipelineRunModel.findOne({ jobId: jobId }).exec();
+
+    if (!pipelineRun) {
+      throw new NotFoundException(`Pipeline result with job ID ${jobId} not found.`);
+    }
+
+    return {
+      data: pipelineRun,
     };
   }
 }

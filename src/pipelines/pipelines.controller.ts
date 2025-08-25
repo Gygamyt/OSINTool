@@ -30,4 +30,12 @@ export class PipelinesController {
     async getStatus(@Param('jobId') jobId: string) {
         return this.pipelinesService.getJobStatus(jobId);
     }
+
+    @Get('result/:jobId')
+    @ApiOperation({ summary: 'Get the PERSISTED RESULT of a job from MongoDB' })
+    @ApiResponse({ status: 200, description: 'Pipeline result retrieved from database.' })
+    @ApiResponse({ status: 404, description: 'Pipeline result not found.' })
+    async getResult(@Param('jobId') jobId: string) {
+        return this.pipelinesService.getPipelineResult(jobId);
+    }
 }

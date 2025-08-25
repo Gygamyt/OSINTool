@@ -8,7 +8,6 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ZodValidationPipe())
 
-  // Конфигурация Swagger
   const config = new DocumentBuilder()
     .setTitle("OSINT Company Pipeline API")
     .setDescription("API для запуска пайплайнов OSINT-агентов для анализа компаний",)
@@ -17,7 +16,7 @@ async function bootstrap() {
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  // URL для доступа к Swagger UI: http://localhost:3000/api
+  // http://localhost:3000/api
   SwaggerModule.setup("api", app, document);
 
   await app.listen(3000);
