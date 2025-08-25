@@ -53,7 +53,7 @@ This project is a NestJS backend service for performing multi-step OSINT analysi
 ## ⚙️ API Usage
 
 Once the application is successfully running, the API documentation is available in your browser at:
-**[http://localhost:3000/api](http://localhost:3000/api)**
+**[http://localhost:8000 /api](http://localhost:8000 /api)**
 
 ### Main Endpoints
 
@@ -64,7 +64,7 @@ Sends a request, waits for the entire pipeline to complete, and returns the fina
 
 **Example Request (`curl`):**
 ```bash
-curl -X POST http://localhost:3000/pipelines/sync \
+curl -X POST http://localhost:8000/pipelines/sync \
 -H "Content-Type: application/json" \
 -d '{
   "request": "NVIDIA",
@@ -82,7 +82,7 @@ Instantly creates a job, returns its `jobId`, and processes the pipeline in the 
 **Example Flow (`curl`):**
 ```bash
 # Step 1: Start the job and get a jobId
-curl -X POST http://localhost:3000/pipelines/async \
+curl -X POST http://localhost:8000/pipelines/async \
 -H "Content-Type: application/json" \
 -d '{
   "request": "NVIDIA",
@@ -90,7 +90,7 @@ curl -X POST http://localhost:3000/pipelines/async \
 }'
 
 # Step 2: After some time, get the final result from the database using the jobId
-curl -X GET http://localhost:3000/pipelines/result/your-job-id-here
+curl -X GET http://localhost:8000/pipelines/result/your-job-id-here
 ```
 ---
 
