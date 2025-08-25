@@ -5,6 +5,7 @@ import {
   IAgent,
 } from "../definitions/agent.interface";
 import { AiModelService } from "../../ai";
+import { env } from "../../config/env";
 
 const createOsintResearcherPrompt = (businessDomain = "QA/AQA"): string => {
   return `
@@ -12,7 +13,7 @@ const createOsintResearcherPrompt = (businessDomain = "QA/AQA"): string => {
 
 В контексте передан список компаний для исследования по ключу customer_identifier_output.
 
-Компания-исключение: Innowise Group (полностью игнорировать)
+Компания-исключение: ${env.COMPANY_TO_IGNORE} (полностью игнорировать)
 
 <ЗАДАЧА>
 
@@ -20,7 +21,7 @@ const createOsintResearcherPrompt = (businessDomain = "QA/AQA"): string => {
 
 <ПОРЯДОК РАБОТЫ>
 
-1. Перебери все названия компаний, пропуская Innowise Group.
+1. Перебери все названия компаний, пропуская ${env.COMPANY_TO_IGNORE}.
 2. Для каждой компании выполни поисковые запросы на русском и английском.
 3. Собери данные с фокусом на ${businessDomain}:
    - официальный сайт;
@@ -35,7 +36,7 @@ const createOsintResearcherPrompt = (businessDomain = "QA/AQA"): string => {
 
 <ОСОБЫЕ ТРЕБОВАНИЯ>
 
-- Игнорируй Innowise Group
+- Игнорируй ${env.COMPANY_TO_IGNORE}
 - Используй только проверяемые факты
 - Фокусируйся на релевантности для домена ${businessDomain}
 `;

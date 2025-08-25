@@ -5,6 +5,7 @@ import {
   IAgent,
 } from "../definitions/agent.interface";
 import { AiModelService } from "../../ai";
+import { env } from "../../config/env";
 
 const createReportFinalizerPrompt = (businessDomain = "QA/AQA") => {
   return `
@@ -44,7 +45,7 @@ const createReportFinalizerPrompt = (businessDomain = "QA/AQA") => {
 
 - Используй только данные из входных ключей
 - Не добавляй свои выводы или интерпретации
-- Не упоминай компанию Innowise Group
+- Не упоминай компанию ${env.COMPANY_TO_IGNORE}
 - Формат — обычный текст с чёткой вложенной структурой
 `;
 };

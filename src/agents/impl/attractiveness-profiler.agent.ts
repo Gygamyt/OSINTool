@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AgentContext, AgentResult, IAgent } from '../definitions/agent.interface';
 import { AiModelService } from '../../ai';
+import { env } from "../../config/env";
 
 const createAttractivenessProfilerPrompt = (businessDomain = 'QA/AQA') => {
     return `
@@ -44,7 +45,7 @@ const createAttractivenessProfilerPrompt = (businessDomain = 'QA/AQA') => {
 - Основан на фактах из запроса и OSINT.
 - Выделяй потенциальные преимущества отдельно.
 - Профессиональный тон.
-- Не упоминать Innowise Group.
+- Не упоминать ${env.COMPANY_TO_IGNORE}.
 `;
 };
 

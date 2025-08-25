@@ -30,6 +30,11 @@ const schema = z.object({
      * Must be a non-empty string.
      */
     GOOGLE_API_KEY: z.string().min(1, { message: "GOOGLE_API_KEY cannot be empty" }),
+
+    /**
+     * The name of the company to be explicitly ignored by AI agents.
+     */
+    COMPANY_TO_IGNORE: z.string(),
 });
 
 /**
