@@ -6,6 +6,7 @@ import * as crypto from "crypto";
 import { InjectModel } from "@nestjs/mongoose";
 import { PipelineRun, PipelineRunDocument } from "./schemas/pipeline-run.schema";
 import { Model } from "mongoose";
+import { env } from "../config/env";
 
 @Injectable()
 export class PipelinesService implements OnModuleDestroy {
@@ -36,7 +37,7 @@ export class PipelinesService implements OnModuleDestroy {
       createPipelineDto,
       {
         jobId: customJobId,
-        attempts: 1,
+        attempts: env.JOB_RETRIES,
         backoff: {
           type: "exponential",
           delay: 1000,
@@ -57,8 +58,8 @@ export class PipelinesService implements OnModuleDestroy {
       "run-pipeline",
       createPipelineDto,
       {
-        jobId: crypto.randomUUID(),
-        attempts: 3,
+        jobId: customJobId,
+        attempts: env.JOB_RETRIES,
         backoff: { type: "exponential", delay: 1000 },
       },
     );

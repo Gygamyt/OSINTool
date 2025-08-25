@@ -35,6 +35,16 @@ const schema = z.object({
      * The name of the company to be explicitly ignored by AI agents.
      */
     COMPANY_TO_IGNORE: z.string(),
+
+    /**
+     * The name of the Google AI model to be used by the AI service.
+     */
+    AI_MODEL_NAME: z.string().default("models/gemini-1.5-flash-latest"),
+
+    /**
+     * The number of times a job should be retried if it fails.
+     */
+    JOB_RETRIES: z.coerce.number().int().positive().default(1),
 });
 
 /**

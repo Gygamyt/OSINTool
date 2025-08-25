@@ -113,4 +113,6 @@ MONGO_DATABASE=osint_db
 
 # Prompts
 COMPANY_TO_IGNORE="Some Company"
+AI_MODEL_NAME="models/gemini-1.5-flash-latest"
+JOB_RETRIES=1
 ```
