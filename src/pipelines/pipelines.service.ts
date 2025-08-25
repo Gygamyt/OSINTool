@@ -1,96 +1,109 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException, OnModuleDestroy } from "@nestjs/common";
+import { InjectQueue } from "@nestjs/bullmq";
+import { Queue, QueueEvents } from "bullmq";
 import { CreatePipelineDto } from "./dto/create-pipeline.dto";
-import { AgentContext } from "../agents/definitions/agent.interface";
-import {
-  AttractivenessProfilerAgent,
-  CompanyIdentificationAgent,
-  InterviewTutorAgent,
-  OsintResearcherAgent, ReportFinalizerAgent,
-  RequestParsingAgent,
-} from "../agents/impl";
-import { env } from "../config/env";
+import * as crypto from "crypto";
 
 @Injectable()
-export class PipelinesService {
+export class PipelinesService implements OnModuleDestroy {
   private readonly logger = new Logger(PipelinesService.name);
+  private readonly queueEvents: QueueEvents;
 
   constructor(
-    private readonly companyIdentificationAgent: CompanyIdentificationAgent,
-    private readonly requestParsingAgent: RequestParsingAgent,
-    private readonly osintResearcherAgent: OsintResearcherAgent,
-    private readonly attractivenessProfilerAgent: AttractivenessProfilerAgent,
-    private readonly interviewTutorAgent: InterviewTutorAgent, // <--- Внедряем
-    private readonly reportFinalizerAgent: ReportFinalizerAgent,
-  ) {}
-
-  async startPipeline(createPipelineDto: CreatePipelineDto) {
-    const initialText = createPipelineDto.companyName;
-    const businessDomain = "IT Staff Augmentation";
-    this.logger.log(`Pipeline started for text: "${initialText}"`);
-
-    // --- Шаги 1-3 (без изменений) ---
-    const identificationResult = await this.companyIdentificationAgent.execute({
-      data: { fullText: initialText },
-    });
-    const parsingResult = await this.requestParsingAgent.execute({
-      data: { fullText: initialText },
-    });
-    const osintResult = await this.osintResearcherAgent.execute({
-      data: { fullText: initialText, businessDomain },
-    });
-
-    // --- Шаг 4: Профилирование ---
-    const profilerResult = await this.attractivenessProfilerAgent.execute({
-      data: {
-        fullText: initialText,
-        initial_request: initialText,
-        customer_identifier_output: identificationResult.output,
-        request_parser_agent_output: parsingResult.output,
-        osint_researcher_agent_output: osintResult.output,
-        businessDomain: businessDomain,
+    @InjectQueue("pipelines") private readonly pipelinesQueue: Queue,
+  ) {
+    this.queueEvents = new QueueEvents("pipelines", {
+      connection: {
+        host: "redis",
+        port: 6379,
       },
     });
+  }
 
-    // --- Шаг 5: Подготовка к интервью ---
-    this.logger.log("Executing InterviewTutorAgent...");
-    const tutorContext: AgentContext = {
-      data: {
-        initial_request: initialText,
-        parsed_info: parsingResult.output,
-        osint_results: osintResult.output,
-        attractiveness_and_profile: profilerResult.output,
-        businessDomain: businessDomain,
+  async onModuleDestroy() {
+    await this.queueEvents.close();
+  }
+
+  async startPipelineAsync(createPipelineDto: CreatePipelineDto) {
+    this.logger.log(
+      `Adding pipeline job for: "${createPipelineDto.companyName}"`,
+    );
+
+    const customJobId = crypto.randomUUID();
+
+    const job = await this.pipelinesQueue.add(
+      "run-pipeline",
+      createPipelineDto,
+      {
+        jobId: customJobId,
+        attempts: 1,
+        backoff: {
+          type: "exponential",
+          delay: 1000,
+        },
       },
-    };
-    const tutorResult = await this.interviewTutorAgent.execute(tutorContext);
+    );
 
-    this.logger.log('Executing ReportFinalizerAgent...');
-    const finalizerContext: AgentContext = {
-      data: {
-        initial_request: initialText,
-        customer_identifier_output: identificationResult.output,
-        request_parser_agent_output: parsingResult.output,
-        osint_researcher_agent_output: osintResult.output,
-        attractiveness_profiler_output: profilerResult.output,
-        tutor_output: tutorResult.output, // Можно добавить, если нужно
-        businessDomain: businessDomain,
-      },
-    };
-    const finalReport = await this.reportFinalizerAgent.execute(finalizerContext);
-    this.logger.log('Final Report Generated.');
-    this.logger.log('Pipeline finished successfully.');
+    this.logger.log(`Job with ID ${job.id} added to the queue.`);
 
-    // Финальный ответ API
     return {
-      pipelineId: `pipe_${Date.now()}`,
-      finalReport: finalReport.output, // <--- Главный результат!
-      intermediateSteps: { // Все промежуточные шаги для отладки
-        companyIdentification: identificationResult.output,
-        requestParsing: parsingResult.output,
-        osintResearch: osintResult.output,
-        attractivenessProfile: profilerResult.output,
-        interviewPrep: tutorResult.output,
+      message: "Pipeline accepted and will be processed.",
+      jobId: job.id,
+    };
+  }
+
+  async startPipelineSync(createPipelineDto: CreatePipelineDto) {
+    const customJobId = crypto.randomUUID();
+    this.logger.log(`Adding and awaiting SYNC job ${customJobId}`);
+
+    const job = await this.pipelinesQueue.add(
+      "run-pipeline",
+      createPipelineDto,
+      {
+        jobId: customJobId,
+        attempts: 3,
+        backoff: { type: "exponential", delay: 1000 },
       },
+    );
+
+    try {
+      const result = await job.waitUntilFinished(this.queueEvents);
+      this.logger.log(`Job ${customJobId} finished with result.`);
+      return {
+        data: {
+          fullResponse: result,
+          jobId: customJobId,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Job ${customJobId} failed.`, error);
+      throw new Error(`Pipeline job ${customJobId} failed: ${error.message}`);
+    }
+  }
+
+  async getJobStatus(jobId: string) {
+    this.logger.log(`Fetching status for job ID: ${jobId}`);
+
+    // Находим задачу по ID
+    const job = await this.pipelinesQueue.getJob(jobId);
+
+    if (!job) {
+      throw new NotFoundException(`Job with ID ${jobId} not found.`);
+    }
+
+    // Проверяем текущий статус задачи
+    const state = await job.getState();
+    const result = job.returnvalue; // Результат выполнения (если есть)
+    const failedReason = job.failedReason; // Причина ошибки (если есть)
+
+    this.logger.log(`Job ${jobId} is in state: ${state}`);
+
+    return {
+      jobId: job.id,
+      state, // 'completed', 'waiting', 'active', 'failed', etc.
+      progress: job.progress, // (мы пока не используем, но можно)
+      result,
+      failedReason,
     };
   }
 }

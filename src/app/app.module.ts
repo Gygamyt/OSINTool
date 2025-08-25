@@ -4,9 +4,20 @@ import { AppService } from "./app.service";
 import { PipelinesModule } from "../pipelines/pipelines.module";
 import { AgentsModule } from "../agents/agents.module";
 import { AiModule } from "../ai";
+import { BullModule } from "@nestjs/bullmq";
 
 @Module({
-  imports: [PipelinesModule, AgentsModule, AiModule],
+  imports: [
+    BullModule.forRoot({
+      connection: {
+        host: "redis",
+        port: 6379,
+      },
+    }),
+    PipelinesModule,
+    AgentsModule,
+    AiModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
