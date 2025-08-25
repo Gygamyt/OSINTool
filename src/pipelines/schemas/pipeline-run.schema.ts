@@ -6,13 +6,16 @@ export type PipelineRunDocument = HydratedDocument<PipelineRun>;
 @Schema({ timestamps: true })
 export class PipelineRun {
     @Prop({ required: true, unique: true, index: true })
+    requestId: string;
+
+    @Prop({ required: true, unique: true, index: true })
     jobId: string;
 
     @Prop({ required: true })
     status: 'processing' | 'completed' | 'failed';
 
     @Prop({ required: true })
-    companyName: string;
+    request: string;
 
     @Prop({ required: true })
     businessDomain: string;

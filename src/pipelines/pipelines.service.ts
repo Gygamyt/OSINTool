@@ -30,6 +30,17 @@ export class PipelinesService implements OnModuleDestroy {
   }
 
   async startPipelineAsync(createPipelineDto: CreatePipelineDto) {
+    const existingRun = await this.pipelineRunModel.findOne({ requestId: createPipelineDto.requestId }).exec();
+
+    if (existingRun) {
+      return {
+        data: {
+          fullResponse: existingRun.finalReport,
+          jobId: existingRun.jobId,
+        },
+      };
+    }
+
     const customJobId = crypto.randomUUID();
 
     const job = await this.pipelinesQueue.add(
@@ -52,6 +63,18 @@ export class PipelinesService implements OnModuleDestroy {
   }
 
   async startPipelineSync(createPipelineDto: CreatePipelineDto) {
+    const existingRun = await this.pipelineRunModel.findOne({ requestId: createPipelineDto.requestId }).exec();
+
+    if (existingRun) {
+      return {
+        data: {
+          message: 'Result already exists for this request ID.',
+          jobId: existingRun.jobId,
+          result: existingRun,
+        },
+      };
+    }
+
     const customJobId = crypto.randomUUID();
 
     const job = await this.pipelinesQueue.add(

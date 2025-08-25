@@ -37,13 +37,14 @@ export class PipelinesProcessor extends WorkerHost {
   async process(job: Job<CreatePipelineDto>): Promise<any> {
     const pipelineRun = await this.pipelineRunModel.create({
       jobId: job.id,
+      requestId: job.data.requestId,
       status: "processing",
-      companyName: job.data.companyName,
+      request: job.data.request,
       businessDomain: job.data.businessDomain,
     });
 
     try {
-      const initialText = job.data.companyName;
+      const initialText = job.data.request;
       const businessDomain = job.data.businessDomain;
 
       const identificationResult =

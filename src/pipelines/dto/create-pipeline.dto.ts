@@ -2,12 +2,16 @@ import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
 const CreatePipelineSchema = z.object({
-    companyName: z
+    requestId: z
+        .string({ required_error: 'requestId is required' })
+        .min(1, { message: 'requestId cannot be empty' }),
+
+    request: z
         .string({
-            required_error: 'companyName is required',
-            invalid_type_error: 'companyName must be a string',
+            required_error: 'request is required',
+            invalid_type_error: 'request must be a string',
         })
-        .min(1, { message: 'Company name cannot be empty' }),
+        .min(1, { message: 'Request cannot be empty' }),
 
     businessDomain: z
         .string({

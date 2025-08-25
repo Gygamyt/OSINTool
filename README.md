@@ -67,7 +67,7 @@ Sends a request, waits for the entire pipeline to complete, and returns the fina
 curl -X POST http://localhost:3000/pipelines/sync \
 -H "Content-Type: application/json" \
 -d '{
-  "companyName": "NVIDIA",
+  "request": "NVIDIA",
   "businessDomain": "GPU and AI Hardware Manufacturing"
 }'
 ```
@@ -85,7 +85,7 @@ Instantly creates a job, returns its `jobId`, and processes the pipeline in the 
 curl -X POST http://localhost:3000/pipelines/async \
 -H "Content-Type: application/json" \
 -d '{
-  "companyName": "NVIDIA",
+  "request": "NVIDIA",
   "businessDomain": "GPU and AI Hardware Manufacturing"
 }'
 
