@@ -1,12 +1,11 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import {
   AgentContext,
   AgentResult,
   IAgent,
 } from "../definitions/agent.interface";
-import { AiModelService } from "../../ai"; // <--- 1. Import AiModelService
+import { AiModelService } from "../../ai";
 
-// The prompt-creating function remains unchanged
 const createReportFinalizerPrompt = (businessDomain = "QA/AQA") => {
   return `
 Контекст: Ты AI-аналитик.
@@ -52,16 +51,9 @@ const createReportFinalizerPrompt = (businessDomain = "QA/AQA") => {
 
 @Injectable()
 export class ReportFinalizerAgent implements IAgent {
-  private readonly logger = new Logger(ReportFinalizerAgent.name);
-
-  // <--- 2. Inject AiModelService
   constructor(private readonly aiModelService: AiModelService) {}
 
   async execute(context: AgentContext): Promise<AgentResult> {
-    this.logger.log("Starting report finalization process with REAL AI...");
-
-    // <--- 3. Replace mock logic with the real AI call
-    // Extract all necessary data from the context provided by the PipelinesService
     const {
       businessDomain,
       initial_request,
@@ -71,10 +63,8 @@ export class ReportFinalizerAgent implements IAgent {
       attractiveness_profiler_output,
     } = context.data;
 
-    // Create the system part of the prompt
     const systemPrompt = createReportFinalizerPrompt(businessDomain);
 
-    // Assemble the final, comprehensive prompt for the AI
     const finalPrompt = `
 ${systemPrompt}
 
@@ -98,12 +88,8 @@ ${attractiveness_profiler_output}
 </ВХОДНЫЕ ДАННЫЕ>
 `;
 
-    // Call the AI service
     const responseFromLLM = await this.aiModelService.generate(finalPrompt);
 
-    this.logger.log("Report finalization process finished.");
-
-    // Return the real, final report from the AI
     return {
       output: responseFromLLM,
     };

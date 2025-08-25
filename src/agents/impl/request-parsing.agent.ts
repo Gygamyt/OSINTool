@@ -1,16 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AgentContext, AgentResult, IAgent } from '../definitions/agent.interface';
 import { AiModelService } from "../../ai";
 
-// Промпт для парсинга запроса
 const REQUEST_PARSING_PROMPT = `
 Контекст: Ты аналитик стаффинг‑запросов.  
-В контексте под ключом initial_request передан полный текст запроса.
+В контексте под ключом initial_request передан полный текст запроса.
 Process data from state key 'customer_identifier_output'
 
 <ЗАДАЧА>
 Проанализируй стаффинг‑запрос и извлеки четыре блока информации:  
-1) название компании‑посредника, указанной в заголовке;  
+1) название компании‑посредника, указанной в заголовке;  
 2) название требуемой роли (например, QA, SQA);  
 3) запрашиваемый стек технологий;  
 4) предполагаемая длительность проекта (например, «1‑3 месяца»).
@@ -31,24 +30,13 @@ Process data from state key 'customer_identifier_output'
 
 @Injectable()
 export class RequestParsingAgent implements IAgent {
-    private readonly logger = new Logger(RequestParsingAgent.name);
-
-    // <--- 2. Внедряем AiModelService через конструктор
     constructor(private readonly aiModelService: AiModelService) {}
 
     async execute(context: AgentContext): Promise<AgentResult> {
-        this.logger.log('Starting request parsing process with REAL AI...');
-
-        // <--- 3. Заменяем всю старую логику на новую
-        // Собираем финальный промпт
         const finalPrompt = `${REQUEST_PARSING_PROMPT}\n\nТекст для анализа:\n${context.data.fullText}`;
 
-        // Вызываем сервис для генерации ответа
         const responseFromLLM = await this.aiModelService.generate(finalPrompt);
 
-        this.logger.log('Request parsing process finished.');
-
-        // Возвращаем реальный результат от AI
         return {
             output: responseFromLLM,
         };

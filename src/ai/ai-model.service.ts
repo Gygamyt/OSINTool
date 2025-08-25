@@ -9,7 +9,6 @@ export class AiModelService {
     private readonly google;
 
     constructor() {
-        // Инициализируем клиент Google AI с нашим ключом из .env
         this.google = createGoogleGenerativeAI({
             apiKey: env.GOOGLE_API_KEY,
         });
@@ -22,19 +21,13 @@ export class AiModelService {
      * @returns Сгенерированный моделью текст.
      */
     async generate(prompt: string): Promise<string> {
-        this.logger.debug('Generating text with Google AI...');
         try {
             const { text } = await generateText({
-                // Укажите модель, которую хотите использовать, например, 'gemini-1.5-flash'
                 model: this.google('models/gemini-1.5-flash-latest'),
                 prompt: prompt,
             });
-
-            this.logger.debug('Text generation successful.');
             return text;
         } catch (error) {
-            this.logger.error('Error generating text with Google AI', error);
-            // В реальном приложении здесь должна быть более сложная обработка ошибок
             throw new Error('Failed to generate text');
         }
     }

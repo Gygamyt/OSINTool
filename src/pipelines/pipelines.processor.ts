@@ -35,8 +35,6 @@ export class PipelinesProcessor extends WorkerHost {
   }
 
   async process(job: Job<CreatePipelineDto>): Promise<any> {
-    this.logger.log(`Processing job ${job.id} with name ${job.name}...`);
-
     const pipelineRun = await this.pipelineRunModel.create({
       jobId: job.id,
       status: "processing",
@@ -100,8 +98,6 @@ export class PipelinesProcessor extends WorkerHost {
       };
 
       await pipelineRun.save();
-
-      this.logger.log(`Job ${job.id} completed successfully and saved to DB.`);
 
       return finalReport.output;
     } catch (error) {

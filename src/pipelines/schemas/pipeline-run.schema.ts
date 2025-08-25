@@ -20,7 +20,6 @@ export class PipelineRun {
     @Prop({ type: Object })
     intermediateSteps?: Record<string, any>;
 
-    // Здесь будет финальный отчет
     @Prop({ type: String })
     finalReport?: string;
 

@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 @Injectable()
 export class AppService {
   getHello(): string {
-    return 'Welcome to OSINT Company Pipeline API!';
+    return 'Welcome to OSINTool from Serezha!';
   }
 
   getHealthStatus(): { status: string; timestamp: string } {

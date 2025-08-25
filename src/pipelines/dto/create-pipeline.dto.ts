@@ -1,7 +1,6 @@
 import { createZodDto } from 'nestjs-zod';
 import { z } from 'zod';
 
-// 1. Обновляем схему валидации
 const CreatePipelineSchema = z.object({
     companyName: z
         .string({
@@ -10,7 +9,6 @@ const CreatePipelineSchema = z.object({
         })
         .min(1, { message: 'Company name cannot be empty' }),
 
-    // --- ДОБАВЛЯЕМ НОВОЕ ПОЛЕ ---
     businessDomain: z
         .string({
             required_error: 'businessDomain is required',
@@ -18,5 +16,4 @@ const CreatePipelineSchema = z.object({
         .min(1, { message: 'Business domain cannot be empty' }),
 });
 
-// 2. DTO класс автоматически подхватит изменения
 export class CreatePipelineDto extends createZodDto(CreatePipelineSchema) {}

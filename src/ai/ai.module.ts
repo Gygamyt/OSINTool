@@ -3,6 +3,6 @@ import { AiModelService } from './ai-model.service';
 
 @Module({
     providers: [AiModelService],
-    exports: [AiModelService], // Экспортируем сервис, чтобы его можно было использовать в других модулях
+    exports: [AiModelService],
 })
 export class AiModule {}

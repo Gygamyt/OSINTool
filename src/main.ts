@@ -11,7 +11,7 @@ async function bootstrap() {
   const config = new DocumentBuilder()
     .setTitle("OSINT Company Pipeline API")
     .setDescription("API для запуска пайплайнов OSINT-агентов для анализа компаний",)
-    .setVersion("0.1")
+    .setVersion("1.0")
     .addTag("osint")
     .build();
 

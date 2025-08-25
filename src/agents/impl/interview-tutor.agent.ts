@@ -1,12 +1,11 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import {
   AgentContext,
   AgentResult,
   IAgent,
 } from "../definitions/agent.interface";
-import { AiModelService } from "../../ai/ai-model.service"; // <--- 1. Import AiModelService
+import { AiModelService } from "../../ai";
 
-// Функция createInterviewTutorPrompt остается без изменений
 const createInterviewTutorPrompt = (businessDomain = "QA/AQA") => {
   return `
 Контекст: Ты агент по подготовке кандидатов к собеседованию на позицию ${businessDomain}.
@@ -50,16 +49,10 @@ const createInterviewTutorPrompt = (businessDomain = "QA/AQA") => {
 
 @Injectable()
 export class InterviewTutorAgent implements IAgent {
-  private readonly logger = new Logger(InterviewTutorAgent.name);
-
-  // <--- 2. Inject AiModelService
   constructor(private readonly aiModelService: AiModelService) {}
 
   async execute(context: AgentContext): Promise<AgentResult> {
-    this.logger.log("Starting interview tutoring process with REAL AI...");
 
-    // <--- 3. Replace mock logic with real AI call
-    // Extract all necessary data from the context
     const {
       businessDomain,
       initial_request,
@@ -68,10 +61,8 @@ export class InterviewTutorAgent implements IAgent {
       attractiveness_and_profile,
     } = context.data;
 
-    // Create the system part of the prompt
     const systemPrompt = createInterviewTutorPrompt(businessDomain);
 
-    // Assemble the final prompt, providing all the data to the AI
     const finalPrompt = `
 ${systemPrompt}
 
@@ -91,13 +82,8 @@ ${attractiveness_and_profile}
 
 </ВХОДНЫЕ ДАННЫЕ>
 `;
-
-    // Call the AI service
     const responseFromLLM = await this.aiModelService.generate(finalPrompt);
 
-    this.logger.log("Interview tutoring process finished.");
-
-    // Return the real result
     return {
       output: responseFromLLM,
     };

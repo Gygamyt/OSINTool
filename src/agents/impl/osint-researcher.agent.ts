@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import {
   AgentContext,
   AgentResult,
@@ -6,7 +6,6 @@ import {
 } from "../definitions/agent.interface";
 import { AiModelService } from "../../ai";
 
-// Превращаем промпт в функцию, как в вашем python-файле
 const createOsintResearcherPrompt = (businessDomain = "QA/AQA"): string => {
   return `
 Контекст: Ты AI-аналитик.
@@ -44,29 +43,17 @@ const createOsintResearcherPrompt = (businessDomain = "QA/AQA"): string => {
 
 @Injectable()
 export class OsintResearcherAgent implements IAgent {
-  private readonly logger = new Logger(OsintResearcherAgent.name);
-
-  // <--- 2. Inject AiModelService via the constructor
   constructor(private readonly aiModelService: AiModelService) {}
 
   async execute(context: AgentContext): Promise<AgentResult> {
-    this.logger.log("Starting OSINT research process with REAL AI...");
-
-    // <--- 3. Replace the old mock logic with the new real logic
     const { fullText, businessDomain } = context.data;
 
-    // Generate the system part of the prompt
     const systemPrompt = createOsintResearcherPrompt(businessDomain);
 
-    // Combine the system prompt with the actual data for analysis
     const finalPrompt = `${systemPrompt}\n\nСписок компаний для анализа:\n${fullText}`;
 
-    // Call the service to generate the response
     const responseFromLLM = await this.aiModelService.generate(finalPrompt);
 
-    this.logger.log("OSINT research process finished.");
-
-    // Return the real result from the AI
     return {
       output: responseFromLLM,
     };

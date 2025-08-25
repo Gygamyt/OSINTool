@@ -1,8 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AgentContext, AgentResult, IAgent } from '../definitions/agent.interface';
-import { AiModelService } from "../../ai/ai-model.service";
+import { AiModelService } from "../../ai";
 
-// Тот самый промпт из вашего python-файла
 const IDENTIFY_COMPANIES_PROMPT = `
 Контекст: Ты аналитик стаффинг‑запросов.   
 Компания‑исключение: Innowise Group (полностью игнорировать)
@@ -38,23 +37,13 @@ const IDENTIFY_COMPANIES_PROMPT = `
 
 @Injectable()
 export class CompanyIdentificationAgent implements IAgent {
-    private readonly logger = new Logger(CompanyIdentificationAgent.name);
-
-    // Внедряем AiModelService через конструктор
     constructor(private readonly aiModelService: AiModelService) {}
 
     async execute(context: AgentContext): Promise<AgentResult> {
-        this.logger.log('Starting company identification process with REAL AI...');
-
-        // 1. Собираем финальный промпт из системной части и пользовательского ввода
         const finalPrompt = `${IDENTIFY_COMPANIES_PROMPT}\n\nТекст для анализа:\n${context.data.fullText}`;
 
-        // 2. Вызываем наш сервис для генерации ответа
         const responseFromLLM = await this.aiModelService.generate(finalPrompt);
 
-        this.logger.log('Company identification process finished.');
-
-        // 3. Возвращаем реальный результат от AI
         return {
             output: responseFromLLM,
         };

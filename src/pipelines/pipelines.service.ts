@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, NotFoundException, OnModuleDestroy } from "@nestjs/common";
 import { InjectQueue } from "@nestjs/bullmq";
 import { Queue, QueueEvents } from "bullmq";
 import { CreatePipelineDto } from "./dto/create-pipeline.dto";
@@ -9,12 +9,12 @@ import { Model } from "mongoose";
 
 @Injectable()
 export class PipelinesService implements OnModuleDestroy {
-  private readonly logger = new Logger(PipelinesService.name);
   private readonly queueEvents: QueueEvents;
 
   constructor(
     @InjectQueue("pipelines") private readonly pipelinesQueue: Queue,
-    @InjectModel(PipelineRun.name) private pipelineRunModel: Model<PipelineRunDocument>,
+    @InjectModel(PipelineRun.name)
+    private pipelineRunModel: Model<PipelineRunDocument>,
   ) {
     this.queueEvents = new QueueEvents("pipelines", {
       connection: {
@@ -29,10 +29,6 @@ export class PipelinesService implements OnModuleDestroy {
   }
 
   async startPipelineAsync(createPipelineDto: CreatePipelineDto) {
-    this.logger.log(
-      `Adding pipeline job for: "${createPipelineDto.companyName}"`,
-    );
-
     const customJobId = crypto.randomUUID();
 
     const job = await this.pipelinesQueue.add(
@@ -48,8 +44,6 @@ export class PipelinesService implements OnModuleDestroy {
       },
     );
 
-    this.logger.log(`Job with ID ${job.id} added to the queue.`);
-
     return {
       message: "Pipeline accepted and will be processed.",
       jobId: job.id,
@@ -58,13 +52,12 @@ export class PipelinesService implements OnModuleDestroy {
 
   async startPipelineSync(createPipelineDto: CreatePipelineDto) {
     const customJobId = crypto.randomUUID();
-    this.logger.log(`Adding and awaiting SYNC job ${customJobId}`);
 
     const job = await this.pipelinesQueue.add(
       "run-pipeline",
       createPipelineDto,
       {
-        jobId: customJobId,
+        jobId: crypto.randomUUID(),
         attempts: 3,
         backoff: { type: "exponential", delay: 1000 },
       },
@@ -72,7 +65,6 @@ export class PipelinesService implements OnModuleDestroy {
 
     try {
       const result = await job.waitUntilFinished(this.queueEvents);
-      this.logger.log(`Job ${customJobId} finished with result.`);
       return {
         data: {
           fullResponse: result,
@@ -80,44 +72,39 @@ export class PipelinesService implements OnModuleDestroy {
         },
       };
     } catch (error) {
-      this.logger.error(`Job ${customJobId} failed.`, error);
       throw new Error(`Pipeline job ${customJobId} failed: ${error.message}`);
     }
   }
 
   async getJobStatus(jobId: string) {
-    this.logger.log(`Fetching status for job ID: ${jobId}`);
-
-    // Находим задачу по ID
     const job = await this.pipelinesQueue.getJob(jobId);
 
     if (!job) {
       throw new NotFoundException(`Job with ID ${jobId} not found.`);
     }
 
-    // Проверяем текущий статус задачи
     const state = await job.getState();
-    const result = job.returnvalue; // Результат выполнения (если есть)
-    const failedReason = job.failedReason; // Причина ошибки (если есть)
-
-    this.logger.log(`Job ${jobId} is in state: ${state}`);
+    const result = job.returnvalue;
+    const failedReason = job.failedReason;
 
     return {
       jobId: job.id,
-      state, // 'completed', 'waiting', 'active', 'failed', etc.
-      progress: job.progress, // (мы пока не используем, но можно)
+      state,
+      progress: job.progress,
       result,
       failedReason,
     };
   }
 
   async getPipelineResult(jobId: string) {
-    this.logger.log(`Fetching result from MongoDB for job ID: ${jobId}`);
-
-    const pipelineRun = await this.pipelineRunModel.findOne({ jobId: jobId }).exec();
+    const pipelineRun = await this.pipelineRunModel
+      .findOne({ jobId: jobId })
+      .exec();
 
     if (!pipelineRun) {
-      throw new NotFoundException(`Pipeline result with job ID ${jobId} not found.`);
+      throw new NotFoundException(
+        `Pipeline result with job ID ${jobId} not found.`,
+      );
     }
 
     return {
