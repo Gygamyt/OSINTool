@@ -5,7 +5,7 @@ services:
     build: .
     container_name: osint_backend
     ports:
-      - "8000:8000"
+      - "8080:8080"
       - "9229:9229"
     env_file:
       - .env
