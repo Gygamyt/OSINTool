@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AgentContext, AgentResult, IAgent } from '../definitions/agent.interface';
 import { AiModelService } from '../../ai';
 import { env } from "../../config/env";
@@ -51,13 +51,9 @@ const createAttractivenessProfilerPrompt = (businessDomain = 'QA/AQA') => {
 
 @Injectable()
 export class AttractivenessProfilerAgent implements IAgent {
-    private readonly logger = new Logger(AttractivenessProfilerAgent.name);
-
     constructor(private readonly aiModelService: AiModelService) {}
 
     async execute(context: AgentContext): Promise<AgentResult> {
-        this.logger.log('Starting attractiveness profiling process with REAL AI...');
-
         const {
             initial_request,
             request_parser_agent_output,
@@ -88,8 +84,6 @@ ${osint_researcher_agent_output}
 </ВХОДНЫЕ ДАННЫЕ>
 `;
         const responseFromLLM = await this.aiModelService.generate(finalPrompt);
-
-        this.logger.log('Attractiveness profiling process finished.');
 
         return {
             output: responseFromLLM,

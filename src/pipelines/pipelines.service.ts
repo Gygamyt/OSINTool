@@ -37,6 +37,7 @@ export class PipelinesService implements OnModuleDestroy {
         data: {
           fullResponse: existingRun.finalReport,
           jobId: existingRun.jobId,
+          cached: true
         },
       };
     }
@@ -71,6 +72,7 @@ export class PipelinesService implements OnModuleDestroy {
           message: 'Result already exists for this request ID.',
           jobId: existingRun.jobId,
           result: existingRun,
+          cached: true,
         },
       };
     }

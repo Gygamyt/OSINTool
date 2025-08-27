@@ -28,6 +28,9 @@ export class PipelineRun {
 
     @Prop({ type: String })
     errorMessage?: string;
+
+    @Prop({ type: Boolean, default: false })
+    cached?: boolean;
 }
 
 export const PipelineRunSchema = SchemaFactory.createForClass(PipelineRun);
