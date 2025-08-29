@@ -1,15 +1,15 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import {
-  AgentContext,
-  AgentResult,
-  IAgent,
+    AgentContext,
+    AgentResult,
+    IAgent,
 } from "../definitions/agent.interface";
 import { env } from "../../config/env";
 import { GoogleSearchService } from "../../google-search/google-search.service";
 import { AiModelService } from "../../ai";
 
 const createOsintSummarizerPrompt = (companyName: string, searchResults: string): string => {
-  return `
+    return `
 Контекст: Ты AI-аналитик OSINT. Твоя задача — на основе ФАКТИЧЕСКИХ данных из поиска Google составить краткую сводку о компании. Не придумывай ничего, чего нет в предоставленных данных.
 
 <НАЗВАНИЕ КОМПАНИИ ДЛЯ АНАЛИЗА>
@@ -39,28 +39,56 @@ ${searchResults}
 
 @Injectable()
 export class OsintResearcherAgent implements IAgent {
-  constructor(
-      private readonly aiModelService: AiModelService,
-      private readonly googleSearchService: GoogleSearchService
-  ) {}
+    private readonly logger = new Logger(OsintResearcherAgent.name);
 
-  async execute(context: AgentContext): Promise<AgentResult> {
-    const initialText = context.data.fullText;
-    const businessDomain = context.data.businessDomain || '';
+    constructor(
+        private readonly aiModelService: AiModelService,
+        private readonly googleSearchService: GoogleSearchService
+    ) {}
 
-    const companyExtractionPrompt = `Из следующего текста извлеки ОДНО наиболее вероятное название компании-заказчика. В ответе должно быть ТОЛЬКО НАЗВАНИЕ и ничего больше. Текст: "${initialText}"`;
-    const companyToResearch = await this.aiModelService.generate(companyExtractionPrompt);
+    async execute(context: AgentContext): Promise<AgentResult> {
+        const companyInfo = context.data.company_info as AgentResult;
+        const companyToResearch = companyInfo.metadata?.companyName;
+        const status = companyInfo.metadata?.status;
+        const businessDomain = context.data.businessDomain || '';
 
-    const searchResults = await this.googleSearchService.search(
-        `${companyToResearch.trim()} ${businessDomain} company profile news`
-    );
+        if (status !== 'success' || !companyToResearch) {
+            this.logger.warn(`Skipping OSINT search because company was not identified.`);
+            return { output: 'OSINT-исследование пропущено, так как компания не была идентифицирована.' };
+        }
 
-    const finalPrompt = createOsintSummarizerPrompt(companyToResearch.trim(), searchResults);
+        this.logger.log(`Starting multi-vector OSINT research for company: "${companyToResearch}"`);
 
-    const report = await this.aiModelService.generate(finalPrompt);
+        const searchTopics = [
+            'official website and company profile',
+            'recent news and press releases',
+            // 'employee reviews Glassdoor',
+            // 'client reviews and case studies',
+            'funding rounds and investments',
+            'products and services overview',
+            // 'competitors and alternatives'
+        ];
 
-    return {
-      output: report,
-    };
-  }
+        const searchQueries = searchTopics.map(topic => `"${companyToResearch}" ${businessDomain} ${topic}`);
+
+        this.logger.log(`Executing ${searchQueries.length} parallel searches...`);
+        const searchPromises = searchQueries.map(query => this.googleSearchService.search(query));
+        const allSearchResults = await Promise.all(searchPromises);
+
+        if (allSearchResults.some(res => res === 'QUOTA_EXCEEDED')) {
+            this.logger.warn(`Proceeding without full OSINT data due to quota limits.`);
+            const fallbackReport = `OSINT-исследование не удалось завершить из-за превышения дневной квоты Google Search. Анализ основан на внутреннем знании модели.`;
+            return { output: fallbackReport };
+        }
+
+        const combinedContext = allSearchResults.join('\n\n---\n\n');
+        this.logger.log(`Combined all search results into a single context of ${combinedContext.length} characters.`);
+
+        const finalPrompt = createOsintSummarizerPrompt(companyToResearch, combinedContext);
+        const report = await this.aiModelService.generate(finalPrompt);
+
+        return {
+            output: report,
+        };
+    }
 }

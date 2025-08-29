@@ -10,41 +10,28 @@ loadDotenv({ path: envPath, override: true });
  * Validation schema for application environment variables.
  */
 const schema = z.object({
-    /**
-     * The minimum level to log.
-     * One of: trace, debug, info, warn, error, fatal
-     */
+    // Node.js Environment
     LOG_LEVEL: z
         .enum(["trace", "debug", "info", "warn", "error", "fatal"])
         .default("info"),
-
-    /**
-     * The runtime environment.
-     * One of: development, production
-     * When "development", pretty-printing is enabled.
-     */
     NODE_ENV: z.enum(["development", "production"]).default("production"),
 
-    /**
-     * The API key for Google AI services.
-     * Must be a non-empty string.
-     */
+    // Google AI & Search Keys
     GOOGLE_API_KEY: z.string().min(1, { message: "GOOGLE_API_KEY cannot be empty" }),
+    GOOGLE_SEARCH_KEY: z.string().min(1, { message: "GOOGLE_SEARCH_KEY cannot be empty" }),
+    GOOGLE_SEARCH_ENGINE_ID: z.string().min(1, { message: "GOOGLE_SEARCH_ENGINE_ID cannot be empty" }),
 
-    /**
-     * The name of the company to be explicitly ignored by AI agents.
-     */
+    // Database Credentials
+    MONGO_USER: z.string().min(1, { message: "MONGO_USER cannot be empty" }),
+    MONGO_PASSWORD: z.string().min(1, { message: "MONGO_PASSWORD cannot be empty" }),
+    MONGO_DATABASE: z.string().min(1, { message: "MONGO_DATABASE cannot be empty" }),
+
+    // Application & Prompts Logic
     COMPANY_TO_IGNORE: z.string(),
-
-    /**
-     * The name of the Google AI model to be used by the AI service.
-     */
     AI_MODEL_NAME: z.string().default("models/gemini-1.5-flash-latest"),
-
-    /**
-     * The number of times a job should be retried if it fails.
-     */
     JOB_RETRIES: z.coerce.number().int().positive().default(1),
+    TOTAL_GENERATION_RETRIES: z.coerce.number().int().positive().default(2),
+    TOTAL_SEARCH_RESULTS: z.coerce.number().int().positive().default(5),
 });
 
 /**
