@@ -8,9 +8,10 @@ import {
   RequestParsingAgent,
 } from "./impl";
 import { AiModule } from "../ai";
+import { GoogleSearchModule } from "../google-search/google-search.module";
 
 @Module({
-  imports: [AiModule],
+  imports: [AiModule, GoogleSearchModule],
   providers: [
     CompanyIdentificationAgent,
     RequestParsingAgent,

@@ -4,59 +4,63 @@ import {
   AgentResult,
   IAgent,
 } from "../definitions/agent.interface";
-import { AiModelService } from "../../ai";
 import { env } from "../../config/env";
+import { GoogleSearchService } from "../../google-search/google-search.service";
+import { AiModelService } from "../../ai";
 
-const createOsintResearcherPrompt = (businessDomain = "QA/AQA"): string => {
+const createOsintSummarizerPrompt = (companyName: string, searchResults: string): string => {
   return `
-Контекст: Ты AI-аналитик.
+Контекст: Ты AI-аналитик OSINT. Твоя задача — на основе ФАКТИЧЕСКИХ данных из поиска Google составить краткую сводку о компании. Не придумывай ничего, чего нет в предоставленных данных.
 
-В контексте передан список компаний для исследования по ключу customer_identifier_output.
+<НАЗВАНИЕ КОМПАНИИ ДЛЯ АНАЛИЗА>
+${companyName}
+</НАЗВАНИЕ КОМПАНИИ ДЛЯ АНАЛИЗА>
 
-Компания-исключение: ${env.COMPANY_TO_IGNORE} (полностью игнорировать)
+<ДАННЫЕ ИЗ ПОИСКА GOOGLE>
+${searchResults}
+</ДАННЫЕ ИЗ ПОИСКА GOOGLE>
 
 <ЗАДАЧА>
-
-Для каждой компании из списка проведи OSINT-исследование с учетом домена бизнеса: ${businessDomain}. Собери структурированную информацию.
-
-<ПОРЯДОК РАБОТЫ>
-
-1. Перебери все названия компаний, пропуская ${env.COMPANY_TO_IGNORE}.
-2. Для каждой компании выполни поисковые запросы на русском и английском.
-3. Собери данные с фокусом на ${businessDomain}:
+Проанализируй <ДАННЫЕ ИЗ ПОИСКА GOOGLE> и составь OSINT-отчет по компании "${companyName}".
+Сконцентрируйся на следующих пунктах:
    - официальный сайт;
    - сфера деятельности и услуги;
-   - тип компании;
-   - интересные факты (новости, инвестиции, найм).
-4. Указывай "нет данных", если информации нет.
+   - тип компании (продукт/аутсорс/стартап);
+   - интересные факты (новости, инвестиции, найм), если они есть в поиске.
 
 <ФОРМАТ ОТВЕТА>
-
-Обычный текст без JSON и разметки.
+Обычный текст без JSON и разметки. Структурируй информацию по пунктам. Если данных нет, пиши "нет данных".
 
 <ОСОБЫЕ ТРЕБОВАНИЯ>
-
-- Игнорируй ${env.COMPANY_TO_IGNORE}
-- Используй только проверяемые факты
-- Фокусируйся на релевантности для домена ${businessDomain}
+- Игнорируй компанию-исключение: ${env.COMPANY_TO_IGNORE}
+- Основывайся ТОЛЬКО на предоставленных данных из поиска.
 `;
 };
 
 @Injectable()
 export class OsintResearcherAgent implements IAgent {
-  constructor(private readonly aiModelService: AiModelService) {}
+  constructor(
+      private readonly aiModelService: AiModelService,
+      private readonly googleSearchService: GoogleSearchService
+  ) {}
 
   async execute(context: AgentContext): Promise<AgentResult> {
-    const { fullText, businessDomain } = context.data;
+    const initialText = context.data.fullText;
+    const businessDomain = context.data.businessDomain || '';
 
-    const systemPrompt = createOsintResearcherPrompt(businessDomain);
+    const companyExtractionPrompt = `Из следующего текста извлеки ОДНО наиболее вероятное название компании-заказчика. В ответе должно быть ТОЛЬКО НАЗВАНИЕ и ничего больше. Текст: "${initialText}"`;
+    const companyToResearch = await this.aiModelService.generate(companyExtractionPrompt);
 
-    const finalPrompt = `${systemPrompt}\n\nСписок компаний для анализа:\n${fullText}`;
+    const searchResults = await this.googleSearchService.search(
+        `${companyToResearch.trim()} ${businessDomain} company profile news`
+    );
 
-    const responseFromLLM = await this.aiModelService.generate(finalPrompt);
+    const finalPrompt = createOsintSummarizerPrompt(companyToResearch.trim(), searchResults);
+
+    const report = await this.aiModelService.generate(finalPrompt);
 
     return {
-      output: responseFromLLM,
+      output: report,
     };
   }
 }

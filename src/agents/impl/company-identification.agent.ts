@@ -1,52 +1,72 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { AgentContext, AgentResult, IAgent } from '../definitions/agent.interface';
-import { AiModelService } from "../../ai";
-import { env } from "../../config/env";
 
-const IDENTIFY_COMPANIES_PROMPT = `
-Контекст: Ты аналитик стаффинг‑запросов.   
-Компания‑исключение: ${env.COMPANY_TO_IGNORE} (полностью игнорировать)
+import { env } from '../../config/env';
+import { GoogleSearchService } from '../../google-search/google-search.service';
+import { AiModelService } from "../../ai";
+
+// Промпт для финального анализа, который принимает результаты поиска
+const createFinalAnalysisPrompt = (companyName: string, searchResults: string): string => {
+  return `
+Контекст: Ты AI-аналитик OSINT. Твоя задача — на основе ФАКТИЧЕСКИХ данных из поиска Google составить краткий вывод о компании.
+
+<НАЗВАНИЕ КОМПАНИИ ДЛЯ АНАЛИЗА>
+${companyName}
+</НАЗВАНИЕ КОМПАНИИ ДЛЯ АНАЛИЗА>
+
+<ДАННЫЕ ИЗ ПОИСКА GOOGLE>
+${searchResults}
+</ДАННЫЕ ИЗ ПОИСКА GOOGLE>
 
 <ЗАДАЧА>
-Определи всех потенциальных заказчиков (компаний) в тексте стаффинг‑запроса, кроме ${env.COMPANY_TO_IGNORE}. Для каждой компании:
-1) проверь существование через открытые источники (OSINT);
-2) узнай сферу деятельности;
-3) сопоставь её со сферами проекта.
-
-<ПОРЯДОК РАБОТЫ>
-1. Анализируй весь текст, включая заголовки, списки, e‑mail‑адреса и Salesforce‑ссылки.  
-2. Любое слово/фрагмент, отделённое пробелом, дефисом или символом «‑», считай возможным названием компании.  
-3. Игнорируй слова, относящиеся к должностям (QA, Developer, Engineer и т.п.).  
-4. Для каждого кандидата:  
-   — проведи OSINT‑поиск;  
-   — определи основные направления бизнеса;  
-   — реши, соответствует ли деятельность указанным сферам проекта.  
-5. Если деятельность явно вне сферы проекта (Beauty, Fashion, Sports и др.), пометь как «не соответствует профилю проекта».
+Подтверди существование компании "${companyName}" и кратко опиши ее сферу деятельности, основываясь ИСКЛЮЧИТЕЛЬНО на <ДАННЫЕ ИЗ ПОИСКА GOOGLE>.
 
 <ФОРМАТ ОТВЕТА>
-• Сначала статус: «Заказчик определён: <название>» или «Заказчик не определён».  
-• Затем список релевантных компаний с кратким пояснением соответствия.  
-• Нерелевантные компании перечисли одной строкой: «Не соответствуют профилю проекта: …».  
-• Краткий связный текст, без JSON, фигурных скобок и Markdown.  
-• Используй короткие абзацы и списки для читаемости.
-
-<ОСОБЫЕ ТРЕБОВАНИЯ>
-— Всегда игнорируй любые упоминания ${env.COMPANY_TO_IGNORE}.  
-— Основывайся только на фактах из открытых источников и информации о проекте.  
-— Не добавляй лишних форматов или разметки.
+-   Сначала статус: "Заказчик определён: ${companyName}" или "Заказчик не определён".
+-   Затем 1-2 предложения с кратким пояснением (например, "Это IT-компания, занимающаяся разработкой мобильных приложений.").
+-   Игнорируй компанию-исключение: ${env.COMPANY_TO_IGNORE}.
 `;
+};
+
 
 @Injectable()
 export class CompanyIdentificationAgent implements IAgent {
-    constructor(private readonly aiModelService: AiModelService) {}
+  private readonly logger = new Logger(CompanyIdentificationAgent.name);
 
-    async execute(context: AgentContext): Promise<AgentResult> {
-        const finalPrompt = `${IDENTIFY_COMPANIES_PROMPT}\n\nТекст для анализа:\n${context.data.fullText}`;
+  constructor(
+      private readonly aiModelService: AiModelService,
+      private readonly googleSearchService: GoogleSearchService,
+  ) {}
 
-        const responseFromLLM = await this.aiModelService.generate(finalPrompt);
+  async execute(context: AgentContext): Promise<AgentResult> {
+    const initialText = context.data.fullText;
+    console.log(initialText + 'asjkfgh');
+    // --- ЭТАП 1: ИЗВЛЕЧЕНИЕ НАЗВАНИЯ КОМПАНИИ ---
+    this.logger.log('Step 1: Extracting company name from text...');
+    const extractionPrompt = `Из следующего текста извлеки ОДНО наиболее вероятное название компании-заказчика. В ответе должно быть ТОЛЬКО НАЗВАНИЕ и ничего больше. Если название не найти, напиши "НЕ НАЙДЕНО". Текст: "${initialText}"`;
+    const extractedName = (await this.aiModelService.generate(extractionPrompt)).trim();
+    console.log(extractedName);
 
-        return {
-            output: responseFromLLM,
-        };
+    if (extractedName.toUpperCase() === 'НЕ НАЙДЕНО' || extractedName.length < 2) {
+      this.logger.warn('Company name not found in text. Aborting.');
+      return { output: 'Заказчик не определён: в исходном тексте не найдено название компании.' };
     }
+    this.logger.log(`Step 1 successful. Extracted name: "${extractedName}"`);
+
+    // --- ЭТАП 2: ПОИСК В GOOGLE ---
+    this.logger.log(`Step 2: Performing Google search for "${extractedName}"...`);
+    const searchResults = await this.googleSearchService.search(
+        `${extractedName} company profile`
+    );
+
+    // --- ЭТАП 3: ФИНАЛЬНЫЙ АНАЛИЗ С ДАННЫМИ ИЗ ПОИСКА ---
+    this.logger.log('Step 3: Performing final analysis with search results...');
+    const finalPrompt = createFinalAnalysisPrompt(extractedName, searchResults);
+    const finalReport = await this.aiModelService.generate(finalPrompt);
+
+    this.logger.log('Agent finished successfully.');
+    return {
+      output: finalReport,
+    };
+  }
 }
