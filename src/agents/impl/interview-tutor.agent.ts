@@ -1,39 +1,36 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import {
-  AgentContext,
-  AgentResult,
-  IAgent,
+    AgentContext,
+    AgentResult,
+    IAgent,
 } from "../definitions/agent.interface";
 import { AiModelService } from "../../ai";
+import { GoogleSearchService } from "../../google-search/google-search.service";
 
-const createInterviewTutorPrompt = (businessDomain = "QA/AQA") => {
-  return `
-Контекст: Ты агент по подготовке кандидатов к собеседованию на позицию ${businessDomain}.
+// ‼️ ОБНОВЛЕННЫЙ ПРОМПТ ‼️
+const createInterviewTutorPrompt = (
+    vacancyInfo: string,
+    googleSearchResults: string
+): string => {
+    return `
+Контекст: Ты AI-агент, который помогает готовить кандидатов к техническому собеседованию.
 
-Входные данные доступны по ключам:
-— исходный запрос;
-— разбор запроса ('parsed_info');
-— результаты OSINT-исследования ('osint_results');
-— оценка привлекательности позиции и профиля кандидата ('attractiveness_and_profile').
+<ИНФОРМАЦИЯ О ВАКАНСИИ>
+${vacancyInfo}
+</ИНФОРМАЦИЯ О ВАКАНСИИ>
+
+<АКТУАЛЬНЫЕ ПРИМЕРЫ ВОПРОСОВ ИЗ GOOGLE>
+${googleSearchResults}
+</АКТУАЛЬНЫЕ ПРИМЕРЫ ВОПРОСОВ ИЗ GOOGLE>
 
 <ЗАДАЧА>
-
-Подготовь для кандидата структурированный пакет материалов:
-1) 5-7 технических вопросов по стеку и задачам;
-2) 3-5 поведенческих вопросов;
-3) 3-4 умных вопроса кандидата к интервьюеру;
-4) 2-3 совета по подготовке.
-
-<ПОРЯДОК РАБОТЫ>
-
-1. Проанализируй все четыре блока входных данных, выдели ключевые навыки, требования и риски.
-2. Сформулируй технические вопросы, проверяющие самые критичные компетенции ${businessDomain}.
-3. Подготовь поведенческие вопросы, раскрывающие soft-skills и взаимодействие в команде.
-4. Составь вопросы к интервьюеру, демонстрирующие осведомленность кандидата о проекте и мотивацию.
-5. Дай практические советы по подготовке (ресурсы, фокус на темах, отработка ответов).
+Подготовь для кандидата структурированный пакет материалов, основываясь на ВСЕЙ предоставленной информации.
+1) 5-7 ключевых технических вопросов, адаптированных под стек из вакансии и актуальные тренды из поиска Google.
+2) 3-5 поведенческих вопросов.
+3) 3-4 умных вопроса кандидата к интервьюеру.
+4) 2-3 практических совета по подготовке.
 
 <ФОРМАТ ОТВЕТА>
-
 • Технические вопросы:
 1. …
 • Поведенческие вопросы:
@@ -43,49 +40,42 @@ const createInterviewTutorPrompt = (businessDomain = "QA/AQA") => {
 • Советы по подготовке:
 — …
 
-Кратко, без JSON, фигурных скобок и Markdown. Используй списки и короткие фразы для читаемости.
+Кратко, без JSON, фигурных скобок и Markdown.
 `;
 };
 
 @Injectable()
 export class InterviewTutorAgent implements IAgent {
-  constructor(private readonly aiModelService: AiModelService) {}
+    private readonly logger = new Logger(InterviewTutorAgent.name);
 
-  async execute(context: AgentContext): Promise<AgentResult> {
+    constructor(
+        private readonly aiModelService: AiModelService,
+        private readonly googleSearchService: GoogleSearchService
+    ) {}
 
-    const {
-      businessDomain,
-      initial_request,
-      parsed_info,
-      osint_results,
-      attractiveness_and_profile,
-    } = context.data;
+    async execute(context: AgentContext): Promise<AgentResult> {
+        const parsingResult = context.data.parsed_info as AgentResult;
+        const vacancyInfo = `
+          - Исходный запрос: ${context.data.initial_request}
+          - Результаты парсинга (читаемые): ${parsingResult.output}
+          - OSINT по компании: ${context.data.osint_results.output}
+          - Анализ привлекательности: ${context.data.attractiveness_and_profile.output}
+        `;
 
-    const systemPrompt = createInterviewTutorPrompt(businessDomain);
+        const structuredData = parsingResult.metadata;
 
-    const finalPrompt = `
-${systemPrompt}
+        const techStackForSearch = `${structuredData!.role} ${structuredData!.stack?.join(' ')}`.trim() || context.data.businessDomain;
+        this.logger.log(`Searching Google for interview questions related to: "${techStackForSearch}"`);
 
-<ВХОДНЫЕ ДАННЫЕ>
+        const searchResults = await this.googleSearchService.search(
+            `актуальные вопросы для собеседования ${techStackForSearch} 2025`
+        );
 
-### Исходный запрос:
-${initial_request}
+        const finalPrompt = createInterviewTutorPrompt(vacancyInfo, searchResults);
+        const responseFromLLM = await this.aiModelService.generate(finalPrompt);
 
-### Разбор запроса:
-${parsed_info}
-
-### Результаты OSINT-исследования:
-${osint_results}
-
-### Оценка привлекательности и профиля:
-${attractiveness_and_profile}
-
-</ВХОДНЫЕ ДАННЫЕ>
-`;
-    const responseFromLLM = await this.aiModelService.generate(finalPrompt);
-
-    return {
-      output: responseFromLLM,
-    };
-  }
+        return {
+            output: responseFromLLM,
+        };
+    }
 }

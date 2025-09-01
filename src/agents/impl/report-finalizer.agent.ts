@@ -8,29 +8,13 @@ import { AiModelService } from "../../ai";
 import { env } from "../../config/env";
 
 const createReportFinalizerPrompt = (businessDomain = "QA/AQA") => {
-  return `
-Контекст: Ты AI-аналитик.
-
-Доступные данные:
-- исходный запрос (initial_request)
-- результат парсинга (request_parser_agent_output)
-- результат оценки привлекательности (attractiveness_profiler_output)
-- OSINT-сводка по компаниям (osint_researcher_agent_output)
-- идентифицированный заказчик (customer_identifier_output)
-
-Возможности Innowise:
-- зрелая экспертиза в области ${businessDomain}
-- AI-подходы в тестировании
-- автоматизация в CI/CD
-- полный спектр тестирования
-- опыт работы со стартапами и крупными корпоративными проектами
+    return `
+Контекст: Ты — главный AI-аналитик. Твоя задача — изучить отчеты от команды младших агентов-аналитиков и на их основе написать единый, связный и структурированный финальный отчет для клиента.
 
 <ЗАДАЧА>
-
-Подготовь единый "Финальный отчёт" в строгой структуре, используя доступные данные.
+Твоя задача — не просто скопировать блоки текста из <ВХОДНЫХ ДАННЫХ>, а **проанализировать, синтезировать и переработать** информацию из них в рамках домена ${businessDomain}. Представь ее в виде целостного, хорошо написанного документа, следуя <СТРУКТУРЕ ФИНАЛЬНОГО ОТЧЁТА>.
 
 <СТРУКТУРА ФИНАЛЬНОГО ОТЧЁТА>
-
 1. Идентифицированный заказчик и роль других компаний
 2. Полный анализ запроса
 3. Детальное OSINT-исследование каждой компании
@@ -42,11 +26,10 @@ const createReportFinalizerPrompt = (businessDomain = "QA/AQA") => {
 5. План подготовки к собеседованию
 
 <ОСОБЫЕ ТРЕБОВАНИЯ>
-
-- Используй только данные из входных ключей
-- Не добавляй свои выводы или интерпретации
-- Не упоминай компанию ${env.COMPANY_TO_IGNORE}
-- Формат — обычный текст с чёткой вложенной структурой
+- **САМОДОСТАТОЧНОСТЬ:** Твой финальный отчет должен быть полным и понятным без обращения к исходным данным.
+- **ЗАПРЕЩЕНО:** Не ссылайся на названия ключей (например, "согласно osint_researcher_agent_output..."). Вместо этого, интегрируй саму ИНФОРМАЦИЮ в свой текст.
+- **ТОН:** Профессиональный, аналитический, структурированный.
+- Не упоминай компанию ${env.COMPANY_TO_IGNORE}.
 `;
 };
 
@@ -62,11 +45,12 @@ export class ReportFinalizerAgent implements IAgent {
       request_parser_agent_output,
       osint_researcher_agent_output,
       attractiveness_profiler_output,
+        tutor_output,
     } = context.data;
 
     const systemPrompt = createReportFinalizerPrompt(businessDomain);
 
-    const finalPrompt = `
+      const finalPrompt = `
 ${systemPrompt}
 
 <ВХОДНЫЕ ДАННЫЕ>
@@ -85,6 +69,9 @@ ${osint_researcher_agent_output}
 
 ### Результат оценки привлекательности (attractiveness_profiler_output):
 ${attractiveness_profiler_output}
+
+### План подготовки к собеседованию (tutor_output):
+${tutor_output}
 
 </ВХОДНЫЕ ДАННЫЕ>
 `;

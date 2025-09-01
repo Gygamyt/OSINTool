@@ -4,7 +4,10 @@ import { Queue, QueueEvents } from "bullmq";
 import { CreatePipelineDto } from "./dto/create-pipeline.dto";
 import * as crypto from "crypto";
 import { InjectModel } from "@nestjs/mongoose";
-import { PipelineRun, PipelineRunDocument } from "./schemas/pipeline-run.schema";
+import {
+  PipelineRun,
+  PipelineRunDocument,
+} from "./schemas/pipeline-run.schema";
 import { Model } from "mongoose";
 import { env } from "../config/env";
 
@@ -30,14 +33,16 @@ export class PipelinesService implements OnModuleDestroy {
   }
 
   async startPipelineAsync(createPipelineDto: CreatePipelineDto) {
-    const existingRun = await this.pipelineRunModel.findOne({ requestId: createPipelineDto.requestId }).exec();
+    const existingRun = await this.pipelineRunModel
+      .findOne({ requestId: createPipelineDto.requestId })
+      .exec();
 
     if (existingRun) {
       return {
         data: {
           fullResponse: existingRun.finalReport,
           jobId: existingRun.jobId,
-          cached: true
+          cached: true,
         },
       };
     }
@@ -58,18 +63,21 @@ export class PipelinesService implements OnModuleDestroy {
     );
 
     return {
-      message: "Pipeline accepted and will be processed.",
+      message: "Pipeline job accepted. Check status using the jobId.",
       jobId: job.id,
+      requestId: createPipelineDto.requestId,
     };
   }
 
   async startPipelineSync(createPipelineDto: CreatePipelineDto) {
-    const existingRun = await this.pipelineRunModel.findOne({ requestId: createPipelineDto.requestId }).exec();
+    const existingRun = await this.pipelineRunModel
+      .findOne({ requestId: createPipelineDto.requestId })
+      .exec();
 
     if (existingRun) {
       return {
         data: {
-          message: 'Result already exists for this request ID.',
+          message: "Result already exists for this request ID.",
           jobId: existingRun.jobId,
           result: existingRun,
           cached: true,
@@ -93,8 +101,9 @@ export class PipelinesService implements OnModuleDestroy {
       const result = await job.waitUntilFinished(this.queueEvents);
       return {
         data: {
-          fullResponse: result,
+          fullResponse: result.finalReport,
           jobId: customJobId,
+          requestId: result.requestId,
         },
       };
     } catch (error) {
