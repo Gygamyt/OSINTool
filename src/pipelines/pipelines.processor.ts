@@ -18,6 +18,7 @@ import {
 import { Model } from "mongoose";
 import { IAgent, AgentContext, AgentResult } from "../agents/definitions/agent.interface";
 import { ValidationAgent } from "../agents/impl/validation.agent";
+import { env } from "../config/env";
 
 @Processor("pipelines")
 export class PipelinesProcessor extends WorkerHost {
@@ -53,7 +54,7 @@ export class PipelinesProcessor extends WorkerHost {
         };
 
         let isValid = false;
-        const maxRetries = 2;
+        const maxRetries = env.TOTAL_GENERATION_RETRIES;
 
         for (let attempt = 1; attempt <= maxRetries && !isValid; attempt++) {
             this.logger.log(`[${jobId}] Executing ${agentName}, attempt #${attempt}...`);
