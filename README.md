@@ -4,9 +4,9 @@ This project is a NestJS backend service for performing multi-step OSINT analysi
 
 ## ✨ Key Features
 
-* **Multi-Step Pipeline**: A chain of 6 sequential AI agents for comprehensive analysis.
+* **Multi-Step Pipeline**: A chain of sequential AI agents for comprehensive analysis.
 * **Asynchronous Processing**: Reliable handling of long-running tasks using a job queue system powered by Redis and BullMQ.
-* **Result Persistence**: All pipeline runs and their results are saved to a MongoDB database.
+* **Result Persistence**: All pipeline runs and their results are saved to a MongoDB database, with progressive updates.
 * **Fully Containerized**: A single command to launch the entire stack (NestJS, Redis, MongoDB) using Docker Compose.
 * **Hot-Reload for Development**: Instantly applies code changes without needing to restart containers.
 * **API Documentation**: Auto-generated API documentation via Swagger (OpenAPI).
@@ -28,6 +28,8 @@ This project is a NestJS backend service for performing multi-step OSINT analysi
 * [Docker](https://www.docker.com/products/docker-desktop/)
 * [Docker Compose](https://docs.docker.com/compose/)
 
+### Installation & Setup
+
 1.  **Clone the repository:**
     ```bash
     git clone <your-repo-url>
@@ -41,7 +43,7 @@ This project is a NestJS backend service for performing multi-step OSINT analysi
     ```
 
 3.  **Configure your environment:**
-    Open the newly created `.env` file and provide your value for `GOOGLE_API_KEY`. The other variables can be left as their default values for development.
+    Open the newly created `.env` file and provide your value for `GOOGLE_API_KEY` and other keys for google integration. The other variables can be left as their default values for development.
 
 4.  **Launch the project:**
     Run the following command from the project's root directory:
@@ -53,66 +55,23 @@ This project is a NestJS backend service for performing multi-step OSINT analysi
 ## ⚙️ API Usage
 
 Once the application is successfully running, the API documentation is available in your browser at:
-**[http://localhost:8080 /api](http://localhost:8080 /api)**
+**[http://localhost:8080/api](http://localhost:8080/api)**
 
-### Main Endpoints
+### Primary Workflow
 
-#### 1. Synchronous Pipeline Execution
-Sends a request, waits for the entire pipeline to complete, and returns the final report in the response.
+The API operates on a simple, asynchronous, two-step process.
 
-* `POST /pipelines/sync`
+#### Step 1: Start a Pipeline
+You initiate a new OSINT pipeline by sending a `POST` request. The server will immediately accept the job and return its unique identifiers.
+
+* `POST /pipelines`
 
 **Example Request (`curl`):**
 ```bash
-curl -X POST http://localhost:8080/pipelines/sync \
+curl -X POST http://localhost:3000/pipelines \
 -H "Content-Type: application/json" \
 -d '{
-  "request": "NVIDIA",
+  "requestId": "some-unique-client-id-123",
+  "request": "Bla-bla-bla",
   "businessDomain": "GPU and AI Hardware Manufacturing"
 }'
-```
-
-#### 2. Asynchronous Pipeline Execution
-Instantly creates a job, returns its `jobId`, and processes the pipeline in the background.
-
-* `POST /pipelines/async` - Starts a job.
-* `GET /pipelines/{jobId}` - Checks the live status of the job in the Redis queue.
-* `GET /pipelines/result/{jobId}` - Retrieves the final, persisted result from MongoDB.
-
-**Example Flow (`curl`):**
-```bash
-# Step 1: Start the job and get a jobId
-curl -X POST http://localhost:8080/pipelines/async \
--H "Content-Type: application/json" \
--d '{
-  "request": "NVIDIA",
-  "businessDomain": "GPU and AI Hardware Manufacturing"
-}'
-
-# Step 2: After some time, get the final result from the database using the jobId
-curl -X GET http://localhost:8080/pipelines/result/your-job-id-here
-```
----
-
-### Template for `.env.example`
-
-Create a `.env.example` file in the project root so other developers know which environment variables are needed.
-
-```dotenv
-# Node.js Environment
-NODE_ENV=development
-LOG_LEVEL=debug
-
-# Google AI API Key
-GOOGLE_API_KEY="your_google_api_key_here"
-
-# MongoDB Credentials
-MONGO_USER=admin
-MONGO_PASSWORD=password123
-MONGO_DATABASE=osint_db
-
-# Prompts
-COMPANY_TO_IGNORE="Some Company"
-AI_MODEL_NAME="models/gemini-1.5-flash-latest"
-JOB_RETRIES=1
-```
