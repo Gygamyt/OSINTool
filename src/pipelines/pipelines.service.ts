@@ -38,13 +38,11 @@ export class PipelinesService implements OnModuleDestroy {
       .exec();
 
     if (existingRun) {
-      return {
-        data: {
-          fullResponse: existingRun.finalReport,
-          jobId: existingRun.jobId,
-          cached: true,
-        },
-      };
+      if (!existingRun.cached) {
+        existingRun.cached = true;
+        await existingRun.save();
+      }
+      return existingRun;
     }
 
     const customJobId = crypto.randomUUID();
@@ -75,14 +73,11 @@ export class PipelinesService implements OnModuleDestroy {
       .exec();
 
     if (existingRun) {
-      return {
-        data: {
-          message: "Result already exists for this request ID.",
-          jobId: existingRun.jobId,
-          result: existingRun,
-          cached: true,
-        },
-      };
+      if (!existingRun.cached) {
+        existingRun.cached = true;
+        await existingRun.save();
+      }
+      return existingRun;
     }
 
     const customJobId = crypto.randomUUID();
@@ -112,66 +107,60 @@ export class PipelinesService implements OnModuleDestroy {
   }
 
   async getJobStatus(jobId: string) {
-    const job = await this.pipelinesQueue.getJob(jobId);
-
-    if (!job) {
-      throw new NotFoundException(`Job with ID ${jobId} not found.`);
-    }
-
-    const state = await job.getState();
-    const result = job.returnvalue;
-    const failedReason = job.failedReason;
-
-    return {
-      jobId: job.id,
-      state,
-      progress: job.progress,
-      result,
-      failedReason,
-    };
+    return this.getPipelineResult(jobId);
   }
 
   async getPipelineResult(jobId: string) {
-    const pipelineRun = await this.pipelineRunModel
+    const updatedRun = await this.pipelineRunModel
+      .findOneAndUpdate(
+        { jobId: jobId, cached: false },
+        { $set: { cached: true } },
+        { new: true },
+      )
+      .exec();
+    if (updatedRun) {
+      return updatedRun;
+    }
+    const existingRun = await this.pipelineRunModel
       .findOne({ jobId: jobId })
       .exec();
 
-    if (!pipelineRun) {
+    if (!existingRun) {
       throw new NotFoundException(
-        `Pipeline result with job ID ${jobId} not found.`,
+        `Pipeline run with job ID ${jobId} not found.`,
       );
     }
 
-    return {
-      data: pipelineRun,
-    };
+    return existingRun;
   }
 
   async getPipelineResultByRequestId(requestId: string) {
-    const pipelineRun = await this.pipelineRunModel
+    const updatedRun = await this.pipelineRunModel
+      .findOneAndUpdate(
+        { requestId: requestId, cached: false },
+        { $set: { cached: true } },
+        { new: true },
+      )
+      .exec();
+
+    if (updatedRun) {
+      return updatedRun;
+    }
+
+    const existingRun = await this.pipelineRunModel
       .findOne({ requestId: requestId })
       .exec();
 
-    if (!pipelineRun) {
+    if (!existingRun) {
       throw new NotFoundException(
-        `Pipeline result with request ID ${requestId} not found.`,
+        `Pipeline run with request ID ${requestId} not found.`,
       );
     }
 
-    return pipelineRun
+    return existingRun;
   }
 
   async getJobStatusByRequestId(requestId: string) {
-    const pipelineRun = await this.pipelineRunModel
-      .findOne({ requestId: requestId }, { jobId: 1 })
-      .exec();
-
-    if (!pipelineRun || !pipelineRun.jobId) {
-      throw new NotFoundException(
-        `Job for request ID ${requestId} not found in database.`,
-      );
-    }
-
-    return this.getJobStatus(pipelineRun.jobId);
+    return this.getPipelineResultByRequestId(requestId);
   }
 }
