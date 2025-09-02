@@ -36,27 +36,35 @@ export class PipelinesController {
     return this.pipelinesService.startPipelineSync(createPipelineDto);
   }
 
-  @Get(":jobId")
-  @ApiOperation({ summary: "Get the status and result of a pipeline job" })
-  @ApiResponse({
-    status: 200,
-    description: "Job status retrieved.",
-    type: JobStatusResponseDto,
-  })
-  @ApiResponse({ status: 404, description: "Job not found." })
-  async getStatus(@Param("jobId") jobId: string) {
+  @Get('status/:requestId')
+  @ApiOperation({ summary: 'Get job status by REQUEST ID' })
+  @ApiResponse({ status: 200, description: 'Job status retrieved.' })
+  @ApiResponse({ status: 404, description: 'Job not found.' })
+  async getStatusByRequestId(@Param('requestId') requestId: string) {
+    return this.pipelinesService.getJobStatusByRequestId(requestId);
+  }
+
+  @Get('result/:requestId')
+  @ApiOperation({ summary: 'Get persisted result by REQUEST ID' })
+  @ApiResponse({ status: 200, description: 'Pipeline result retrieved from database.' })
+  @ApiResponse({ status: 404, description: 'Pipeline result not found.' })
+  async getResultByRequestId(@Param('requestId') requestId: string) {
+    return this.pipelinesService.getPipelineResultByRequestId(requestId);
+  }
+
+  @Get('status/job/:jobId')
+  @ApiOperation({ summary: '[Legacy] Get job status by JOB ID' })
+  @ApiResponse({ status: 200, description: 'Job status retrieved.' })
+  @ApiResponse({ status: 404, description: 'Job not found.' })
+  async getStatusByJobId(@Param('jobId') jobId: string) {
     return this.pipelinesService.getJobStatus(jobId);
   }
 
-  @Get("result/:jobId")
-  @ApiOperation({ summary: "Get the PERSISTED RESULT of a job from MongoDB" })
-  @ApiResponse({
-    status: 200,
-    description: "Pipeline result retrieved from database.",
-    type: PipelineResultResponseDto,
-  })
-  @ApiResponse({ status: 404, description: "Pipeline result not found." })
-  async getResult(@Param("jobId") jobId: string) {
+  @Get('result/job/:jobId')
+  @ApiOperation({ summary: '[Legacy] Get persisted result by JOB ID' })
+  @ApiResponse({ status: 200, description: 'Pipeline result retrieved from database.' })
+  @ApiResponse({ status: 404, description: 'Pipeline result not found.' })
+  async getResultByJobId(@Param('jobId') jobId: string) {
     return this.pipelinesService.getPipelineResult(jobId);
   }
 }

@@ -146,4 +146,32 @@ export class PipelinesService implements OnModuleDestroy {
       data: pipelineRun,
     };
   }
+
+  async getPipelineResultByRequestId(requestId: string) {
+    const pipelineRun = await this.pipelineRunModel
+      .findOne({ requestId: requestId })
+      .exec();
+
+    if (!pipelineRun) {
+      throw new NotFoundException(
+        `Pipeline result with request ID ${requestId} not found.`,
+      );
+    }
+
+    return pipelineRun
+  }
+
+  async getJobStatusByRequestId(requestId: string) {
+    const pipelineRun = await this.pipelineRunModel
+      .findOne({ requestId: requestId }, { jobId: 1 })
+      .exec();
+
+    if (!pipelineRun || !pipelineRun.jobId) {
+      throw new NotFoundException(
+        `Job for request ID ${requestId} not found in database.`,
+      );
+    }
+
+    return this.getJobStatus(pipelineRun.jobId);
+  }
 }
