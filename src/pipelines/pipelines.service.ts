@@ -10,7 +10,6 @@ import {
 } from "./schemas/pipeline-run.schema";
 import { Model } from "mongoose";
 import { env } from "../config/env";
-import { PipelineStatusDto } from "./dto/pipeline-response.dto";
 
 @Injectable()
 export class PipelinesService implements OnModuleDestroy {
@@ -39,7 +38,11 @@ export class PipelinesService implements OnModuleDestroy {
       .exec();
 
     if (existingRun) {
-      return existingRun
+      if (!existingRun.cached) {
+        existingRun.cached = true;
+        await existingRun.save();
+      }
+      return existingRun;
     }
 
     const customJobId = crypto.randomUUID();
@@ -70,7 +73,11 @@ export class PipelinesService implements OnModuleDestroy {
       .exec();
 
     if (existingRun) {
-      return existingRun
+      if (!existingRun.cached) {
+        existingRun.cached = true;
+        await existingRun.save();
+      }
+      return existingRun;
     }
 
     const customJobId = crypto.randomUUID();

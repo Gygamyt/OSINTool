@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Get, Param } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Res, UseInterceptors } from "@nestjs/common";
 import { PipelinesService } from "./pipelines.service";
 import { CreatePipelineDto } from "./dto/create-pipeline.dto";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
@@ -7,6 +7,7 @@ import {
   PipelineResultDto,
   SyncResponseDto,
 } from "./dto/pipeline-response.dto";
+import { CustomCacheInterceptor } from "../common/interceptors/cached-response.interceptor";
 
 @ApiTags("Pipelines")
 @Controller("pipelines")
@@ -20,7 +21,13 @@ export class PipelinesController {
     description: "Pipeline started successfully.",
     type: AsyncResponseDto,
   })
+  @ApiResponse({
+    status: 200,
+    description: "Job result already exists and is returned.",
+    type: PipelineResultDto,
+  })
   @ApiResponse({ status: 400, description: "Bad Request - Invalid input." })
+  @UseInterceptors(CustomCacheInterceptor)
   async create(@Body() createPipelineDto: CreatePipelineDto) {
     return this.pipelinesService.startPipelineAsync(createPipelineDto);
   }
@@ -32,6 +39,12 @@ export class PipelinesController {
     description: "Job finished, returns the final report.",
     type: SyncResponseDto,
   })
+  @ApiResponse({
+    status: 200,
+    description: "Job result already exists and is returned.",
+    type: PipelineResultDto,
+  })
+  @UseInterceptors(CustomCacheInterceptor)
   async createSync(@Body() createPipelineDto: CreatePipelineDto) {
     return this.pipelinesService.startPipelineSync(createPipelineDto);
   }
