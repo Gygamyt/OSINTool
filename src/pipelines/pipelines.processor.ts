@@ -54,6 +54,14 @@ export class PipelinesProcessor extends WorkerHost {
       status: "processing",
       request: jobData.request,
       businessDomain: jobData.businessDomain,
+      finalReport: null,
+      intermediateSteps: {
+        identification: null,
+        osint: null,
+        parsing: null,
+        profiling: null,
+        tutoring: null,
+      }
     });
 
     try {

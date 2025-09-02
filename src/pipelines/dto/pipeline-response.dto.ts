@@ -46,41 +46,47 @@ export class SyncResponseDto {
   requestId: string;
 }
 
-/**
- * DTO for the response of the job status check endpoint.
- */
-export class JobStatusDto {
-  @ApiProperty({
-    example: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d',
-    description: 'The unique ID of the job in the queue.',
-  })
+export class PipelineStatusDto {
+  @ApiProperty({ example: 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d' })
   jobId: string;
+
+  @ApiProperty({ example: 'unique-client-request-id-12345' })
+  requestId: string;
 
   @ApiProperty({
     example: 'completed',
-    description: 'Can be: waiting, active, completed, failed, delayed.',
+    description: 'Current status: processing, completed, or failed.',
   })
-  state: string;
+  status: string;
 
   @ApiProperty({
-    example: 0,
-    description: 'Job progress (if implemented).',
-  })
-  progress: number;
-
-  @ApiProperty({
-    description: 'The return value of the job. Can be a final report string or an object.',
+    description: 'An object containing the outputs of intermediate agent steps. Null if not applicable.',
+    type: 'object',
     nullable: true,
-    example: { finalReport: '...', requestId: '...' }
+    additionalProperties: true,
+    example: {
+      identification: null,
+      osint: null,
+      parsing: null,
+      profiling: null,
+      tutoring: null,
+    }
   })
-  result: any | null;
+  intermediateSteps?: Record<string, any> | null;
 
   @ApiProperty({
-    example: null,
-    description: 'The reason the job failed, if applicable.',
+    description: 'The final report, available only when the status is "completed".',
     nullable: true,
+    example: 'ФИНАЛЬНЫЙ ОТЧЁТ...',
   })
-  failedReason: string | null;
+  finalReport: string | null;
+
+  @ApiProperty({
+    description: 'The error message, available only when the status is "failed".',
+    nullable: true,
+    example: 'Error: Something went wrong.',
+  })
+  errorMessage: string | null;
 }
 
 /**
@@ -138,11 +144,9 @@ export class PipelineResultDto {
   finalReport?: string;
 
   @ApiProperty({
-    example: null,
-    description: 'The error message if the job failed.',
-    nullable: true,
+    example: false
   })
-  errorMessage?: string;
+  cached: boolean
 
   @ApiProperty({ description: 'The timestamp when the document was created.' })
   createdAt: Date;

@@ -4,7 +4,6 @@ import { CreatePipelineDto } from "./dto/create-pipeline.dto";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import {
   AsyncResponseDto,
-  JobStatusDto,
   PipelineResultDto,
   SyncResponseDto,
 } from "./dto/pipeline-response.dto";
@@ -42,7 +41,7 @@ export class PipelinesController {
   @ApiResponse({
     status: 200,
     description: "Job status retrieved.",
-    type: JobStatusDto,
+    type: PipelineResultDto,
   })
   @ApiResponse({ status: 404, description: "Job not found." })
   async getStatusByRequestId(@Param("requestId") requestId: string) {
@@ -66,7 +65,7 @@ export class PipelinesController {
   @ApiResponse({
     status: 200,
     description: "Job status retrieved.",
-    type: JobStatusDto,
+    type: PipelineResultDto,
   })
   @ApiResponse({ status: 404, description: "Job not found." })
   async getStatusByJobId(@Param("jobId") jobId: string) {
