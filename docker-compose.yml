@@ -40,3 +40,7 @@ services:
 volumes:
   redis-data:
   mongo-data:
+
+networks:
+  backend_net:
+    external: true
