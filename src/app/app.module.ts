@@ -26,6 +26,7 @@ import { env } from "../config/env";
         host: env.REDIS_HOST,
         port: env.REDIS_PORT,
         password: env.REDIS_PASSWORD,
+        username: "default",
       },
     }),
     PipelinesModule,
