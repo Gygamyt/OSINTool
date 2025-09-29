@@ -22,8 +22,9 @@ export class PipelinesService implements OnModuleDestroy {
   ) {
     this.queueEvents = new QueueEvents("pipelines", {
       connection: {
-        host: "redis",
-        port: 6379,
+        host: env.REDIS_HOST,
+        port: env.REDIS_PORT,
+        password: env.REDIS_PASSWORD
       },
     });
   }

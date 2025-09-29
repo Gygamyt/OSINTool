@@ -8,6 +8,7 @@ import { BullModule } from "@nestjs/bullmq";
 import { MongooseModule } from "@nestjs/mongoose";
 import { GoogleSearchModule } from "../google-search/google-search.module";
 import { ConfigModule } from "@nestjs/config";
+import { env } from "../config/env";
 
 @Module({
   imports: [
@@ -22,8 +23,9 @@ import { ConfigModule } from "@nestjs/config";
     }),
     BullModule.forRoot({
       connection: {
-        host: "redis",
-        port: 6379,
+        host: env.REDIS_HOST,
+        port: env.REDIS_PORT,
+        password: env.REDIS_PASSWORD,
       },
     }),
     PipelinesModule,
@@ -33,5 +35,4 @@ import { ConfigModule } from "@nestjs/config";
   controllers: [AppController],
   providers: [AppService],
 })
-
 export class AppModule {}

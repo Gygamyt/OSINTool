@@ -26,6 +26,11 @@ const schema = z.object({
     MONGO_PASSWORD: z.string().min(1, { message: "MONGO_PASSWORD cannot be empty" }),
     MONGO_DATABASE: z.string().min(1, { message: "MONGO_DATABASE cannot be empty" }),
 
+    // Redis Credentials
+    REDIS_HOST: z.string().min(1, { message: "REDIS_HOST cannot be empty" }),
+    REDIS_PORT: z.coerce.number().int().positive(),
+    REDIS_PASSWORD: z.string().min(1, { message: "REDIS_PASSWORD cannot be empty" }),
+
     // Application & Prompts Logic
     COMPANY_TO_IGNORE: z.string(),
     AI_MODEL_NAME: z.string().default("models/gemini-1.5-flash-latest"),

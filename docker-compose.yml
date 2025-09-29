@@ -19,14 +19,23 @@ services:
     command: npm run start:dev
 
   redis:
-    image: redis:latest
+    image: redis:8.2.1
     container_name: osint_redis
+    command: bash -c "redis-server --appendonly yes --requirepass $$REDIS_PASSWORD"
     ports:
-      - "6379:6379"
-#    networks:
-#      - backend_net
+      - "6380:6379"
     volumes:
       - redis-data:/data
+    env_file:
+      - ./.env
+    environment:
+      - REDISCLI_AUTH=$REDIS_PASSWORD
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli ping | grep PONG" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   mongo:
     image: mongo:4.4
