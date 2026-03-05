@@ -16,7 +16,23 @@ const schema = z.object({
         .default("info"),
     NODE_ENV: z.enum(["development", "production"]).default("production"),
 
-    // Google AI & Search Keys
+    GOOGLE_SERVICE_ACCOUNT_BASE64: z
+        .string()
+        .min(1, { message: "GOOGLE_SERVICE_ACCOUNT_BASE64 is required" })
+        .transform((str, ctx) => {
+            try {
+                const decoded = Buffer.from(str, 'base64').toString('utf-8');
+                return JSON.parse(decoded);
+            } catch (e) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: "Invalid Base64 or JSON in GOOGLE_SERVICE_ACCOUNT_BASE64",
+                });
+                return z.NEVER;
+            }
+        }),
+
+    // Google Search Keys
     GOOGLE_API_KEY: z.string().min(1, { message: "GOOGLE_API_KEY cannot be empty" }),
     GOOGLE_SEARCH_KEY: z.string().min(1, { message: "GOOGLE_SEARCH_KEY cannot be empty" }),
     GOOGLE_SEARCH_ENGINE_ID: z.string().min(1, { message: "GOOGLE_SEARCH_ENGINE_ID cannot be empty" }),
@@ -33,11 +49,14 @@ const schema = z.object({
 
     // Application & Prompts Logic
     COMPANY_TO_IGNORE: z.string(),
-    AI_MODEL_NAME: z.string().default("models/gemini-1.5-flash-latest"),
+    AI_MODEL_NAME: z.string().default("gemini-1.5-flash"), // Для Vertex обычно не нужен префикс models/
     JOB_RETRIES: z.coerce.number().int().positive().default(1),
     TOTAL_GENERATION_RETRIES: z.coerce.number().int().positive().default(2),
     TOTAL_SEARCH_RESULTS: z.coerce.number().int().positive().default(5),
-});
+}).transform((data) => ({
+    ...data,
+    GOOGLE_PROJECT_ID: data.GOOGLE_SERVICE_ACCOUNT_BASE64.project_id,
+}));
 
 /**
  * Parsed and validated environment variables.
