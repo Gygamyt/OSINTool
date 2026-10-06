@@ -55,6 +55,8 @@ export class PipelinesService implements OnModuleDestroy {
       {
         jobId: customJobId,
         attempts: env.JOB_RETRIES,
+        removeOnComplete: { age: 3600, count: 1000 },
+        removeOnFail: { age: 7 * 24 * 3600 },
         backoff: {
           type: "exponential",
           delay: 1000,
@@ -90,6 +92,8 @@ export class PipelinesService implements OnModuleDestroy {
       {
         jobId: customJobId,
         attempts: env.JOB_RETRIES,
+        removeOnComplete: { age: 3600, count: 1000 },
+        removeOnFail: { age: 7 * 24 * 3600 },
         backoff: { type: "exponential", delay: 1000 },
       },
     );
